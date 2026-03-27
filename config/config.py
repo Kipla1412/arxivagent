@@ -188,5 +188,24 @@ class Config(BaseModel):
     def mlflow_experiment_name(self) -> str:
         return os.environ.get("MLFLOW_EXPERIMENT_NAME", "AIAgent")
 
+    @property
+    def qdrant_url(self) -> str:
+        return os.environ.get("QDRANT_URL", "http://localhost:6333")
+
+    @property
+    def qdrant_api_key(self) -> str:
+        return os.environ.get("QDRANT_API_KEY", None)
+
+    @property
+    def qdrant_collection(self) -> str:
+        return os.environ.get("QDRANT_COLLECTION", "arxiv-papers-chunks")
+
+    @property
+    def sentence_transformer_model(self) -> str:
+        return os.environ.get(
+            "SENTENCE_TRANSFORMER_MODEL",
+            "sentence-transformers/all-MiniLM-L6-v2"
+        )
+    
     def to_dict(self) -> dict[str, Any]:
         return self.model_dump(mode="json")

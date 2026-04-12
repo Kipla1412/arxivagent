@@ -11,7 +11,6 @@ from context.manager import ContextManager
 from hooks.hook_system import HookSystem
 from safety.approval import ApprovalManager
 from tools.discovery import ToolDiscoveryManager
-from tools.mcp.mcp_manager import MCPManager
 from tools.registry import create_default_registry
 from knowledgebase.opensearch import OpenSearchConnector
 from knowledgebase.embedding import EmbeddingConnector
@@ -28,7 +27,6 @@ class Session:
             self.config,
             self.tool_registry,
         )
-        self.mcp_manager = MCPManager(self.config)
         self.chat_compactor = ChatCompactor(self.client)
         self.approval_manager = ApprovalManager(
             self.config.approval,
@@ -49,10 +47,12 @@ class Session:
         self.mlflow_run_id: Optional[str] = None
 
     async def initialize(self) -> None:
-        await self.mcp_manager.initialize()
-        self.mcp_manager.register_tools(self.tool_registry)
 
         self.discovery_manager.discover_all()
+        
+        # Pass session reference to tools for connector access
+        self._pass_session_to_tools()
+        
         self.context_manager = ContextManager(
             config=self.config,
             user_memory=self._load_memory(),
@@ -64,6 +64,11 @@ class Session:
         # Set session ID for trace tracking
         if self.mlflow_tracker.enabled:
             self.mlflow_tracker.current_session_id = self.session_id
+
+    def _pass_session_to_tools(self) -> None:
+        """Pass session reference to tools so they can access connectors."""
+        # Store session reference in config for tools to access
+        self.config._session = self
 
     def _load_memory(self) -> str | None:
         data_dir = get_data_dir()
@@ -101,8 +106,8 @@ class Session:
             "turn_count": self.turn_count,
             "message_count": self.context_manager.message_count,
             "token_usage": self.context_manager.total_usage,
-            "tools_count": len(self.tool_registry.get_tools()),
-            "mcp_servers": len(self.tool_registry.connected_mcp_servers),
+            "tools_count": len(self.tool_registry.get_tools())
+            
             # "mlflow_stats": self.mlflow_tracker.get_session_stats()
         }
 
@@ -113,61 +118,8 @@ class Session:
         Returns:
             Tuple of (opensearch_connector, embedding_connector)
         """
-        return self.opensearch_connector, self.embedding_connector
-        
-    # def track_agent_interaction(self, user_message: str, agent_response: str, 
-    #                          tools_used: list[str], session_duration: float) -> None:
-    #     """
-    #     Track complete agent interaction with MLflow.
-        
-    #     Args:
-    #         user_message: The user's input message
-    #         agent_response: The agent's response
-    #         tools_used: List of tools used in this interaction
-    #         session_duration: Time taken for this interaction
-    #     """
-    #     self.mlflow_tracker.track_agent_session(
-    #         user_message=user_message,
-    #         agent_response=agent_response,
-    #         tools_used=tools_used,
-    #         session_duration=session_duration
-    #     )
-        
-    # def track_llm_call(self, model: str, messages: List[Dict], response: str, 
-    #                   tokens_used: int, response_time: float) -> None:
-    #     """
-    #     Track LLM API calls.
-        
-    #     Args:
-    #         model: Model name used
-    #         messages: Messages sent to LLM
-    #         response: LLM response
-    #         tokens_used: Number of tokens used
-    #         response_time: Time taken for response
-    #     """
-    #     self.mlflow_tracker.track_llm_call(
-    #         model=model,
-    #         messages=messages,
-    #         response=response,
-    #         tokens_used=tokens_used,
-    #         response_time=response_time
-    #     )
-        
-    # def track_error(self, error_type: str, error_message: str, 
-    #                context: Optional[Dict] = None) -> None:
-    #     """
-    #     Track errors across the application.
-        
-    #     Args:
-    #         error_type: Type of error
-    #         error_message: Error message
-    #         context: Additional context information
-    #     """
-    #     self.mlflow_tracker.track_error(
-    #         error_type=error_type,
-    #         error_message=error_message,
-    #         context=context
-    #     )
+        return self.opensearch_connector, self.embedding_connector  
+
         
     async def search_knowledge_base(self, query: str, limit: int = 5) -> list[dict]:
         """

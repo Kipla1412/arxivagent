@@ -2,7 +2,7 @@ from __future__ import annotations
 from typing import Any, List
 from pydantic import BaseModel, Field
 from opensearchpy import OpenSearch
-from tools.base import Tool, ToolConfirmation, ToolKind, ToolResult
+from tools.base import Tool, ToolInvocation, ToolKind, ToolResult
 from config.config import Config 
 import json
 
@@ -31,8 +31,6 @@ class ArxivHybridSearchTool(Tool):
 
     def __init__(self, config: Config):
         super().__init__(config)
-        self.opensearch_connector = OpenSearchConnector(config)
-        self.opensearch = self.opensearch_connector.connect()
 
     @property
     def schema(self) -> type[BaseModel]:
@@ -41,6 +39,15 @@ class ArxivHybridSearchTool(Tool):
     async def execute(self, invocation: ToolInvocation) -> ToolResult:
         try:
             params = HybridSearchParams(**invocation.params)
+
+            
+            session = getattr(self.config, "_session", None)
+
+            if session:
+                opensearch_client = session.opensearch_connector.connect()
+            else:
+                opensearch_client = OpenSearchConnector(self.config).connect()
+
 
             # Constructing the Hybrid Query DSL
             search_body = {
@@ -71,7 +78,7 @@ class ArxivHybridSearchTool(Tool):
             }
 
             # Triggering your 'hybrid-rrf-pipeline'
-            response = self.opensearch.search(
+            response = opensearch_client.search(
                 index=ARXIV_INDEX,
                 body=search_body,
                 params={"search_pipeline": "hybrid-rrf-pipeline"}

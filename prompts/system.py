@@ -184,22 +184,9 @@ def _get_environment_section(config: Config) -> str:
 - **Current Date**: {now.strftime("%A, %B %d, %Y")}
 - **Operating System**: {os_info}
 - **Working Directory**: {config.cwd}
-- **Shell**: {_get_shell_info()}
 
 The user has granted you access to run tools in service of their request. Use them when needed."""
 
-
-def _get_shell_info() -> str:
-    """Get shell information based on platform."""
-    import os
-    import sys
-
-    if sys.platform == "darwin":
-        return os.environ.get("SHELL", "/bin/zsh")
-    elif sys.platform == "win32":
-        return "PowerShell/cmd.exe"
-    else:
-        return os.environ.get("SHELL", "/bin/bash")
 
 def _get_security_section() -> str:
     return """# Safety Guidelines

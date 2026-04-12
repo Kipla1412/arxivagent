@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from pydantic import BaseModel, Field
 import logging
 
-logger = logging.getLogger(__name__)
+# logger = logging.getLogger(__name__)
 
 class SubagentParams(BaseModel):
     goal: str = Field(

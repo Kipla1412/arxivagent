@@ -18,12 +18,11 @@ class JinaEmbeddingParams(BaseModel):
 class JinaEmbeddingTool(Tool):
     name = "jina_embedding"
     description = "MANDATORY first step. Converts query into vector for retrieval. MUST be called before search."
+    kind = ToolKind.NETWORK
+
 
     def __init__(self, config: Config):
         super().__init__(config)
-
-        self.embedding_connector = EmbeddingConnector(config)
-      
 
     @property
     def schema(self) -> type[BaseModel]:
@@ -32,8 +31,15 @@ class JinaEmbeddingTool(Tool):
     async def execute(self, invocation: ToolInvocation) -> ToolResult:
         try:
             params = JinaEmbeddingParams(**invocation.params)
-            client = self.embedding_connector.connect()
             
+            # Use session-level connector if available
+            session = getattr(self.config, "_session", None)
+
+            if session:
+                client = session.embedding_connector.connect()
+            else:
+                client = EmbeddingConnector(self.config).connect()
+
             response = await client.post(
                 self.config.jina_api_url,
                 json={

@@ -55,7 +55,7 @@ class ApprovalPolicy(str, Enum):
     ON_REQUEST = "on-request"
     ON_FAILURE = "on-failure"
     AUTO = "auto"
-    AUTO_EDIT = "auto-edut"
+    AUTO_EDIT = "auto-edit"
     NEVER = "never"
     YOLO = "yolo"
 
@@ -125,8 +125,12 @@ class Config(BaseModel):
     def temperature(self) -> float:
         return self.model.temperature
 
-    @model_name.setter
-    def temperature(self, value: str) -> None:
+    # @model_name.setter
+    # def temperature(self, value: str) -> None:
+    #     self.model.temperature = value
+
+    @temperature.setter
+    def temperature(self, value: float) -> None:
         self.model.temperature = value
 
     def validate(self) -> list[str]:
@@ -139,6 +143,13 @@ class Config(BaseModel):
             errors.append(f"Working directory does not exist: {self.cwd}")
 
         return errors
+    @property
+    def session(self):
+        return getattr(self, "_session", None)
+    
+    @session.setter
+    def session(self, value):
+        self._session = value
     
     @property
     def jina_api_key(self) -> str | None:
@@ -174,7 +185,7 @@ class Config(BaseModel):
 
     @property
     def opensearch_ssl(self) -> bool:
-        return os.environ.get("OPENSEARCH_SSL", False) == False
+        return os.environ.get("OPENSEARCH_SSL", "false").lower() == "true"
 
     @property
     def mlflow_enabled(self) -> bool:
@@ -193,7 +204,7 @@ class Config(BaseModel):
         return os.environ.get("QDRANT_URL", "http://localhost:6333")
 
     @property
-    def qdrant_api_key(self) -> str:
+    def qdrant_api_key(self) -> str | None:
         return os.environ.get("QDRANT_API_KEY", None)
 
     @property
